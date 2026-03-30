@@ -3,6 +3,7 @@ const mysql = require('mysql2');
 const bcrypt = require('bcrypt');
 const knex = require("knex");
 const cors = require('cors');
+const config = require("./knexfile");
 const app = express();
 
 app.use(express.json());
@@ -13,23 +14,14 @@ app.use(cors({
   credentials: true
 }));
 
-
-const db = knex({
-  client: "mysql2",
-  connection: {
-    host: "127.0.0.1",
-    user: "root",
-    password: "",
-    database: "agendamento_db"
-  }
-});
+const db = knex(config.development)
 
 app.post('/login', (req, res) => {
-  const { telefone, senha } = req.body;
+  const { email, senha } = req.body;
 
-  const sql = `SELECT * FROM modelo WHERE telefone = ?`;
+  const sql = `SELECT * FROM modelo WHERE email = ?`;
 
-  db.query(sql, [telefone], async (err, results) => {
+  db.select(sql, [email], async (err, results) => {
     if (err) return res.status(500).json(err);
 
     if (results.length === 0) {
