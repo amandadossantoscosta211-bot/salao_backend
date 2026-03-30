@@ -1,14 +1,14 @@
 const express = require("express");
+const mysql = require('mysql2');
+const bcrypt = require('bcrypt');
 const knex = require("knex");
-const cors = require("cors");
-
+const cors = require('cors');
 const app = express();
-
 
 app.use(express.json());
 
 app.use(cors({
-  origin: "http://localhost:5173", // front (webpack)
+  origin: "http://localhost:5173",
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true
 }));
@@ -19,51 +19,45 @@ const db = knex({
   connection: {
     host: "127.0.0.1",
     user: "root",
-    password: "root",
+    password: "",
     database: "agendamento_db"
   }
 });
 
-/* =========================
-   🔐 LOGIN (SIMPLES)
-========================= */
-app.post("/login", async (req, res) => {
-  const { email, senha } = req.body;
+app.post('/login', (req, res) => {
+  const { telefone, senha } = req.body;
 
-  try {
-    const usuario = await db("usuario")
-      .where({ email, senha })
-      .first();
+  const sql = `SELECT * FROM modelo WHERE telefone = ?`;
 
-    if (!usuario) {
-      return res.status(401).json({ mensagem: "Usuário inválido" });
+  db.query(sql, [telefone], async (err, results) => {
+    if (err) return res.status(500).json(err);
+
+    if (results.length === 0) {
+      return res.status(401).json({ mensagem: 'Usuário não encontrado' });
     }
 
-    // 🔥 token simples (depois pode usar JWT)
-    res.json({
-      mensagem: "Login OK",
-      token: "token_fake_123"
-    });
+    const usuario = results[0];
 
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ mensagem: "Erro no servidor" });
-  }
+    const senhaValida = await bcrypt.compare(senha, usuario.senha);
+
+    if (!senhaValida) {
+      return res.status(401).json({ mensagem: 'Senha incorreta' });
+    }
+
+    res.json({ mensagem: 'Login realizado com sucesso!' });
+  });
 });
 
 /* =========================
    👤 MODELO
 ========================= */
 app.post("/modelos", async (req, res) => {
-  const { nome, telefone, senha } = req.body;
+  const { nome, telefone } = req.body;
 
   try {
     const [id] = await db("modelo").insert({
       nome,
-      telefone,
-      senha,
-      data_cadastro: new Date(),
-      data_atualizacao: new Date()
+      telefone
     });
 
     res.json({ id, mensagem: "Modelo cadastrado!" });
